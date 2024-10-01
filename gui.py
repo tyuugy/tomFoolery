@@ -1,205 +1,153 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog, messagebox
 
-class BuildingBlock:
-    def __init__(self, name, category, properties):
-        self.name = name
-        self.category = category
-        self.properties = properties
-        self.value = 0
+# Function to ensure only numbers are entered for cost
+def validate_numeric_input(P):
+    return P.isdigit() or P == ""
 
-class JokerBuilder:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Joker Builder")
-        self.root.geometry("800x600")
-        self.value_entry = print("Value Entry")
+# Function to synchronize mod ID with mod name
+def sync_mod_id(*args):
+    mod_id_var.set(mod_name_var.get())
 
-        # Create block palette
-        self.block_palette = ttk.Frame(self.root)
-        self.block_palette.pack(side=tk.LEFT, fill=tk.Y)
+# Function to gather data and create the .lua file
+def save_joker():
+    # Collect all input data
+    joker_data = {
+        "mod_name": mod_name_var.get(),
+        "mod_id": mod_id_var.get(),
+        "mod_author": mod_author_entry.get(),
+        "mod_description": mod_description_entry.get("1.0", tk.END).strip(),
+        "joker_key": joker_key_entry.get(),
+        "joker_name": joker_name_entry.get(),
+        "joker_description": joker_description_entry.get("1.0", tk.END).strip(),
+        "rarity": rarity_var.get(),
+        "cost": int(cost_entry.get())
+    }
 
-        self.modifier_blocks = []
-        self.condition_blocks = []
-        self.effect_blocks = []
+    # Prompt user to select output directory
+    output_dir = filedialog.askdirectory(title="Select Output Directory")
+    if output_dir:
+        # Create and save .lua file
+        create_joker_lua(joker_data, output_dir)
+        messagebox.showinfo("Success", f"Joker '{joker_data['joker_key']}.lua' created successfully in {output_dir}!")
 
-        # Create blocks
-        self.create_block("Plus Mult", "Modifiers", {"mult":1})
-        self.create_block("Plus Chip", "Modifiers", {"chip":1})
-        self.create_block("Suit Diamonds", "Conditions", {"suit": "Diamonds"})
-        self.create_block("Poker Hand", "Conditions", {"hand": "Poker Hand"})
-        self.create_block("Joker Slot", "Effects", {"joker_slot": True})
+# Function to create the .lua file content
+def create_joker_lua(joker_data, output_dir):
+    lua_content = f"""
+    -- Creates an atlas for cards to use
+    SMODS.Atlas {{
+        -- Key for code to find it with
+        key = "{joker_data['joker_key']}",
+        -- The name of the file, for the code to pull the atlas from
+        path = "example.png",
+        -- Width of each sprite in 1x size
+        px = 71,
+        -- Height of each sprite in 1x size
+        py = 95
+    }}
 
-        # Create workspace
-        self.workspace = ttk.Frame(self.root)
-        self.workspace.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # Create properties panel
-        self.properties_panel = ttk.Frame(self.root)
-        self.properties_panel.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # Create Lua code output
-        self.lua_code_output = tk.Text(self.root)
-        self.lua_code_output.pack(side=tk.BOTTOM, fill=tk.X)
-
-        # Create entry field for numerical value
-        self.value_entry = tk.Entry(self.properties_panel)
-        self.value_entry.pack(fill=tk.X)
-
-        # Create button to save value
-        self.save_button = tk.Button(self.properties_panel, text="Save Value", command=self.save_value)
-        self.save_button.pack(fill=tk.X)
-
-        self.value_entry_attribute = self.value_entry
-
-        # Create attribute value_entry
-        self.value_entry_attribute = self.value_entry
-
-        # Create tag buttons
-        self.tag_buttons = []
-        self.tag_button_frame = ttk.Frame(self.properties_panel)
-        self.tag_button_frame.pack(fill=tk.X)
-
-
-
-    def create_block(self, name, category, properties):
-        block = BuildingBlock(name, category, properties)
-        if category == "Modifiers":
-            self.modifier_blocks.append(block)
-        elif category == "Conditions":
-            self.condition_blocks.append(block)
-        elif category == "Effects":
-            self.effect_blocks.append(block)
-
-        # Create block button
-        block_button = ttk.Button(self.block_palette, text=name)
-        block_button.pack(fill=tk.X)
-
-
-        # Set current block
-        self.current_block = block
-
-    def block_clicked(self, block):
-
-    # Clear entry field
-        self.value_entry.delete(0, tk.END)
-
-    # Set focus to entry field
-        self.value_entry.focus_set()
-
-    # Set current block
-        self.current_block = block
-
-    # Update tag buttons
-        self.update_tag_buttons()
-
-    # Update current block based on button click
-    for button in self.block_palette.winfo_children():
-        if button['text'] == block.name:
-            button.config(relief=tk.SUNKEN)
-        else:
-            button.config(relief=tk.RAISED)
-
-    # Update current block based on button click
-    for b in self.modifier_blocks:
-        if b.name == block.name:
-            self.current_block = b
-    for b in self.condition_blocks:
-        if b.name == block.name:
-            self.current_block = b
-    for b in self.effect_blocks:
-        if b.name == block.name:
-            self.current_block = b
-
-    def save_value(self):
-        # Get value from entry field
-        value = self.value_entry.get()
-
-        # Try to convert value to integer
-        try:
-            value = int(value)
-        except ValueError:
-            print("Invalid value")
-            return
-
-        # Save value to current block
-        self.current_block.value = value
-
-        print(f"Block: {self.current_block.name}, Value: {self.current_block.value}")
+    SMODS.Joker {{
+        key = '{joker_data['joker_key']}',
+        loc_txt = {{
+            name = '{joker_data['joker_name']}',
+            text = {{
+                "{joker_data['joker_description']}"
+            }}
+        }},
+        config = {{}},
+        loc_vars = function(self, info_queue, card)
+            return {{}}
+        end,
+        rarity = {joker_data['rarity']},
+        atlas = '{joker_data['joker_key']}',
+        pos = {{ x = 0, y = 0 }},
+        cost = {joker_data['cost']},
+        calculate = function(self, card, context)
+            if context.joker_main then
+                return {{
+                    joker_slots = 3,
+                    mult_mod = 4,
+                    message = "Joker grants +3 slots and x4 multiplier."
+                }}
+            end
+        end
+    }}
+    """
     
+    file_path = f"{output_dir}/{joker_data['joker_key']}.lua"
+    with open(file_path, "w") as file:
+        file.write(lua_content)
 
+# Create the main window
+root = tk.Tk()
+root.title("Balatro Joker Creator")
+root.geometry("800x600")
 
-def update_tag_buttons(self):
-    # Clear tag buttons
-    for button in self.tag_buttons:
-        button.destroy()
+# Variables to sync mod ID and mod name
+mod_name_var = tk.StringVar()
+mod_id_var = tk.StringVar()
+mod_name_var.trace_add("write", sync_mod_id)
 
-    # Create new tag buttons
-    self.tag_buttons = []
-    if self.current_block:
-        def update_block_property(tag):
-            # Get value from entry field
-            value = self.value_entry.get()
+# Header section for additional mod owner information
+header_frame = tk.Frame(root)
+header_frame.pack(pady=10)
 
-            # Try to convert value to integer
-            try:
-                value = int(value)
-            except ValueError:
-                print("Invalid value")
-                return
+header_label = tk.Label(header_frame, text="Enter Mod Owner Information", font=("Arial", 16))
+header_label.pack()
 
-            # Update block properties
-            self.current_block.properties[tag] = value
+mod_author_entry = tk.Entry(header_frame, width=40)
+mod_author_entry.pack(pady=5)
+mod_author_entry.insert(0, "Enter Mod Author Name")
 
-            # Print block properties
-            print(f"Block: {self.current_block.name}, Properties: {self.current_block.properties}")
+# Main frame for mod and joker information
+main_frame = tk.Frame(root)
+main_frame.pack(pady=20)
 
-        for tag in self.current_block.properties:
-            button = tk.Button(self.tag_button_frame, text=tag, command=lambda tag=tag: update_block_property(tag))
-            button.pack(side=tk.LEFT)
-            self.tag_buttons.append(button)
+# Mod Name and ID section
+mod_name_label = tk.Label(main_frame, text="Mod Name:")
+mod_name_label.grid(row=0, column=0, padx=10, pady=5)
+mod_name_entry = tk.Entry(main_frame, textvariable=mod_name_var)
+mod_name_entry.grid(row=0, column=1, padx=10, pady=5)
 
-def update_block_property(self, tag):
-    # Get value from entry field
-    value = self.value_entry.get()
+mod_id_label = tk.Label(main_frame, text="Mod ID:")
+mod_id_label.grid(row=0, column=2, padx=10, pady=5)
+mod_id_entry = tk.Entry(main_frame, textvariable=mod_id_var, state='readonly')
+mod_id_entry.grid(row=0, column=3, padx=10, pady=5)
 
-    # Try to convert value to integer
-    try:
-        value = int(value)
-    except ValueError:
-        print("Invalid value")
-        return
+# Joker Name and Key
+joker_name_label = tk.Label(main_frame, text="Joker Name:")
+joker_name_label.grid(row=1, column=0, padx=10, pady=5)
+joker_name_entry = tk.Entry(main_frame)
+joker_name_entry.grid(row=1, column=1, padx=10, pady=5)
 
-    # Update block properties
-    self.current_block.properties[tag] = value
+joker_key_label = tk.Label(main_frame, text="Joker Key:")
+joker_key_label.grid(row=1, column=2, padx=10, pady=5)
+joker_key_entry = tk.Entry(main_frame)
+joker_key_entry.grid(row=1, column=3, padx=10, pady=5)
 
-    # Print block properties
-    print(f"Block: {self.current_block.name}, Properties: {self.current_block.properties}")
+# Joker Description
+joker_description_label = tk.Label(main_frame, text="Joker Description:")
+joker_description_label.grid(row=2, column=0, padx=10, pady=5)
+joker_description_entry = tk.Text(main_frame, height=4, width=50)
+joker_description_entry.grid(row=2, column=1, columnspan=3, padx=10, pady=5)
 
-def tag_button_clicked(self, tag):
-        # Get value from entry field
-        value = self.value_entry.get()
+# Rarity Dropdown
+rarity_label = tk.Label(main_frame, text="Rarity:")
+rarity_label.grid(row=3, column=0, padx=10, pady=5)
+rarity_var = tk.IntVar()
+rarity_dropdown = ttk.Combobox(main_frame, textvariable=rarity_var, values=[1, 2, 3, 4], state="readonly")
+rarity_dropdown.grid(row=3, column=1, padx=10, pady=5)
+rarity_dropdown.current(0)
 
-        # Try to convert value to integer
-        try:
-            value = int(value)
-        except ValueError:
-            print("Invalid value")
-            return
+# Cost (numeric entry only)
+cost_label = tk.Label(main_frame, text="Cost:")
+cost_label.grid(row=3, column=2, padx=10, pady=5)
+cost_entry = tk.Entry(main_frame, validate='key', validatecommand=(root.register(validate_numeric_input), '%P'))
+cost_entry.grid(row=3, column=3, padx=10, pady=5)
 
-        # Update block properties
-        self.current_block.properties[tag] = value
+# Save Button
+save_button = tk.Button(root, text="Save Joker", command=save_joker)
+save_button.pack(pady=20)
 
-        # Print block properties
-        print(f"Block: {self.current_block.name}, Properties: {self.current_block.properties}")
-
-
-def generate_lua_code(self):
-        # TO DO: implement Lua code generation based on blocks in workspace
-        pass
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    joker_builder = JokerBuilder(root)
-    print(joker_builder.value_entry_attribute)
-    root.mainloop()
+# Run the application
+root.mainloop()
