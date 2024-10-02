@@ -1,5 +1,5 @@
 make assets be able to be added thorugh a selection of an image
-make the mod execute in the windows terminal without the requirment of a development platform (e.g:vscode, various ide's, python gui)
+
 add all the different tags:
 SMODS.meta_tags.plus_mult,
 SMODS.meta_tags.plus_chip,
