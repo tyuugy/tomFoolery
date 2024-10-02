@@ -34,6 +34,15 @@ def save_joker():
 # Function to create the .lua file content
 def create_joker_lua(joker_data, output_dir):
     lua_content = f"""
+    --- STEAMODDED HEADER
+    --- MOD_NAME: "{joker_data['mod_name']}"
+    --- MOD_ID: {joker_data['mod_id']}
+    --- MOD_DESCRIPTION: default
+    --- MOD_AUTHOR: ION: "{joker_data['mod_description']}"
+    --- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-0812d]
+    --- BADGE_COLOR: c7638f
+    --- PREFIX: mvan
+
     -- Creates an atlas for cards to use
     SMODS.Atlas {{
         -- Key for code to find it with
