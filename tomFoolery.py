@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from PIL import Image, ImageTk
+import os
 
-# Function to ensure only numbers are entered for cost and effect values
+# Function to ensure only numbers are entered for cost
 def validate_numeric_input(P):
     return P.isdigit() or P == ""
 
@@ -9,13 +11,43 @@ def validate_numeric_input(P):
 def sync_mod_id(*args):
     mod_id_var.set(mod_name_var.get())
 
-# Function to gather selected contexts and effects
-def get_selected_contexts_and_effects():
-    selected_contexts = [context for context, var in context_vars.items() if var.get()]
-    effects = {effect: effect_vars[effect].get() for effect in effect_vars if effect_vars[effect].get()}
-    return selected_contexts, effects
+# Function to browse for an image file
+def browse_image():
+    file_path = filedialog.askopenfilename(
+        title="Select Joker Image",
+        filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp")]
+    )
+    if file_path:
+        image_path_var.set(file_path)
+        image_label.config(text=os.path.basename(file_path))  # Display only the file name
+        update_preview()  # Update the preview to show the selected image
 
-# Function to gather data and create the .lua file
+# Function to update the preview section
+def update_preview():
+    # Update the image preview
+    if image_path_var.get():
+        img = Image.open(image_path_var.get())
+        img = img.resize((150, 150))  # Resize the image for display
+        img = ImageTk.PhotoImage(img)
+        image_preview_label.config(image=img)
+        image_preview_label.image = img  # Keep a reference to avoid garbage collection
+
+# Function to show Joker information
+def show_info(event):
+    preview_text = f"""
+    Mod Name: {mod_name_var.get()}
+    Joker Name: {joker_name_entry.get()}
+    Description: {joker_description_entry.get("1.0", tk.END).strip()}
+    Rarity: {rarity_var.get()}
+    Cost: {cost_entry.get()}
+    """
+    joker_info_label.config(text=preview_text)
+
+# Function to hide Joker information
+def hide_info(event):
+    joker_info_label.config(text="")
+
+# Function to gather data and create the folder structure and files
 def save_joker():
     # Collect all input data
     joker_data = {
@@ -27,24 +59,47 @@ def save_joker():
         "joker_description": joker_description_entry.get("1.0", tk.END).strip(),
         "rarity": rarity_var.get(),
         "cost": int(cost_entry.get()),
-        "contexts": get_selected_contexts_and_effects()[0],
-        "effects": get_selected_contexts_and_effects()[1]
+        "image_path": image_path_var.get()
     }
 
     # Prompt user to select output directory
     output_dir = filedialog.askdirectory(title="Select Output Directory")
     if output_dir:
-        create_joker_lua(joker_data, output_dir)
-        messagebox.showinfo("Success", f"Joker '{joker_data['joker_key']}.lua' created successfully in {output_dir}!")
+        # Create the main folder named after the joker's key
+        joker_folder_path = os.path.join(output_dir, joker_data['joker_key'])
+        os.makedirs(joker_folder_path, exist_ok=True)
+
+        # Create the assets folder with 1x and 2x subfolders
+        assets_path = os.path.join(joker_folder_path, "assets")
+        os.makedirs(os.path.join(assets_path, "1x"), exist_ok=True)
+        os.makedirs(os.path.join(assets_path, "2x"), exist_ok=True)
+
+        # Resize and save the image in 1x and 2x folders
+        save_resized_images(joker_data['image_path'], assets_path)
+
+        # Create and save the .lua file in the main folder
+        create_joker_lua(joker_data, joker_folder_path)
+        messagebox.showinfo("Success", f"Joker '{joker_data['joker_key']}' created successfully in {joker_folder_path}!")
+
+# Function to resize and save the images
+def save_resized_images(image_path, assets_path):
+    try:
+        # Open the original image
+        img = Image.open(image_path)
+
+        # Resize for 1x folder
+        img_1x = img.resize((71, 95))
+        img_1x.save(os.path.join(assets_path, "1x", "joker_image.png"))
+
+        # Resize for 2x folder
+        img_2x = img.resize((142, 190))
+        img_2x.save(os.path.join(assets_path, "2x", "joker_image.png"))
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to resize and save images: {e}")
 
 # Function to create the .lua file content
-def create_joker_lua(joker_data, output_dir):
-    # Create context string
-    context_str = ", ".join(joker_data['contexts'])
-    
-    # Create effects string
-    effects_str = "\n".join([f"    {key} = {value}," for key, value in joker_data['effects'].items()])
-
+def create_joker_lua(joker_data, folder_path):
+    # Only use the image file name without the path
     lua_content = f"""--- STEAMODDED HEADER
 --- MOD_NAME: {joker_data['mod_name']}
 --- MOD_ID: {joker_data['mod_id']}
@@ -56,7 +111,7 @@ def create_joker_lua(joker_data, output_dir):
     -- Creates an atlas for cards to use
     SMODS.Atlas {{
         key = "{joker_data['joker_key']}",
-        path = "example.png",
+        path = "joker_image.png",
         px = 71,
         py = 95
     }}
@@ -69,32 +124,37 @@ def create_joker_lua(joker_data, output_dir):
                 "{joker_data['joker_description']}"
             }}
         }},
-        config = {{ extra = {{ mult = {joker_data['mult_value']} }} }},  -- Insert user-defined multiplier here
+        config = {{ extra = {{}} }},
         loc_vars = function(self, info_queue, card)
-            return {{ vars = {{ card.ability.extra.mult }} }}
+            return {{ vars = {{}} }}
         end,
-        contexts = {{ {context_str} }},
-        effects = {{
-{effects_str}
-        }},
         rarity = {joker_data['rarity']},
         atlas = '{joker_data['joker_key']}',
         pos = {{ x = 0, y = 0 }},
-        cost = {joker_data['cost']},
-        calculate = function(self, card, context)
-            if context.joker_main then
-                return {{
-                    mult_mod = card.ability.extra.mult,
-                    message = localize {{ type = 'variable', key = 'a_mult', vars = {{ card.ability.extra.mult }} }}
-                }}
-            end
-        end
+        cost = {joker_data['cost']}
     }}
     """
     
-    file_path = f"{output_dir}/{joker_data['joker_key']}.lua"
+    file_path = os.path.join(folder_path, f"{joker_data['joker_key']}.lua")
+    
+    # Save the Lua file
     with open(file_path, "w") as file:
         file.write(lua_content)
+
+# Rainbow wave effect for the save button
+def rainbow_wave():
+    # List of rainbow colors
+    colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3']
+    # Update button color based on current color index
+    current_color = colors[rainbow_wave.color_index]
+    save_button.config(bg=current_color, activebackground=current_color)
+    # Increment color index and reset if it exceeds the list length
+    rainbow_wave.color_index = (rainbow_wave.color_index + 1) % len(colors)
+    # Schedule the function to be called again after 1000 ms (1 second) for a slower effect
+    root.after(1000, rainbow_wave)
+
+# Initialize color index for rainbow wave
+rainbow_wave.color_index = 0
 
 # Create the main window
 root = tk.Tk()
@@ -104,6 +164,7 @@ root.geometry("800x900")
 # Variables to sync mod ID and mod name
 mod_name_var = tk.StringVar()
 mod_id_var = tk.StringVar()
+image_path_var = tk.StringVar()
 mod_name_var.trace_add("write", sync_mod_id)
 
 # Header section for additional mod information
@@ -150,43 +211,59 @@ joker_description_label.grid(row=2, column=0, padx=10, pady=5)
 joker_description_entry = tk.Text(main_frame, height=4, width=50)
 joker_description_entry.grid(row=2, column=1, columnspan=3, padx=10, pady=5)
 
-
 # Rarity Dropdown
 rarity_label = tk.Label(main_frame, text="Rarity:")
-rarity_label.grid(row=4, column=0, padx=10, pady=5)
+rarity_label.grid(row=3, column=0, padx=10, pady=5)
 rarity_var = tk.IntVar()
 rarity_dropdown = ttk.Combobox(main_frame, textvariable=rarity_var, values=[1, 2, 3, 4], state="readonly")
-rarity_dropdown.grid(row=4, column=1, padx=10, pady=5)
+rarity_dropdown.grid(row=3, column=1, padx=10, pady=5)
 rarity_dropdown.current(0)
 
 # Cost (numeric entry only)
 cost_label = tk.Label(main_frame, text="Cost:")
-cost_label.grid(row=4, column=2, padx=10, pady=5)
+cost_label.grid(row=3, column=2, padx=10, pady=5)
 cost_entry = tk.Entry(main_frame, validate='key', validatecommand=(root.register(validate_numeric_input), '%P'))
-cost_entry.grid(row=4, column=3, padx=10, pady=5)
+cost_entry.grid(row=3, column=3, padx=10, pady=5)
 
-# Context Selection
-context_frame = tk.LabelFrame(root, text="Select Contexts", padx=10, pady=10)
-context_frame.pack(pady=10)
-contexts_list = ["end_of_round", "buying_card", "discard", "joker_main", "repetition"]
-context_vars = {context: tk.BooleanVar() for context in contexts_list}
-for i, context in enumerate(contexts_list):
-    checkbox = tk.Checkbutton(context_frame, text=context, variable=context_vars[context])
-    checkbox.grid(row=i//2, column=i%2, sticky='w', padx=5)
+# Image Upload
+image_frame = tk.Frame(root)
+image_frame.pack(pady=10)
 
-# Effect Configuration
-effect_frame = tk.LabelFrame(root, text="Configure Effects", padx=10, pady=10)
-effect_frame.pack(pady=10)
-effects_list = ["mult_mod", "plus_chips", "times_mult", "extra.func"]
-effect_vars = {effect: tk.Entry(effect_frame, validate='key', validatecommand=(root.register(validate_numeric_input), '%P')) for effect in effects_list}
-for i, effect in enumerate(effects_list):
-    label = tk.Label(effect_frame, text=f"{effect}:")
-    label.grid(row=i, column=0, sticky='e')
-    effect_vars[effect].grid(row=i, column=1, padx=5)
+image_label = tk.Label(image_frame, text="No image selected")
+image_label.pack()
 
-# Save Button moved to the right
-save_button = tk.Button(root, text="Save Joker", command=save_joker)
+browse_button = tk.Button(image_frame, text="Browse Image", command=browse_image)
+browse_button.pack()
+
+# Preview Section
+preview_frame = tk.LabelFrame(root, text="Joker Preview", padx=10, pady=10)
+preview_frame.pack(pady=10)
+
+# Image Preview
+image_preview_label = tk.Label(preview_frame)
+image_preview_label.pack(side="left", padx=10)
+
+# Joker Info Label (hidden until hover)
+joker_info_label = tk.Label(preview_frame, text="", justify="left")
+joker_info_label.pack(side="left", padx=10)
+
+# Bind hover events to image preview
+image_preview_label.bind("<Enter>", show_info)
+image_preview_label.bind("<Leave>", hide_info)
+
+# Save Button with Rainbow Effect
+save_button = tk.Button(root, text="Save Joker", command=save_joker, font=("Arial", 14), width=15, height=2)
 save_button.pack(side='right', padx=20, pady=20)
+
+# Start the rainbow wave effect
+rainbow_wave()
+
+# Trigger update preview when fields are updated
+mod_name_var.trace_add("write", lambda *args: update_preview())
+joker_name_entry.bind("<KeyRelease>", lambda event: update_preview())
+joker_description_entry.bind("<KeyRelease>", lambda event: update_preview())
+rarity_dropdown.bind("<<ComboboxSelected>>", lambda event: update_preview())
+cost_entry.bind("<KeyRelease>", lambda event: update_preview())
 
 # Run the application
 root.mainloop()
