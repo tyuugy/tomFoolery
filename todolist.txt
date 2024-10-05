@@ -1,32 +1,29 @@
 make assets be able to be added thorugh a selection of an image
 
 add all the different tags:
-SMODS.meta_tags.plus_mult,
-SMODS.meta_tags.plus_chip,
-SMODS.meta_tags.times_mult, (Xmult)
-SMODS.meta_tags.suit_diamonds, (condition)
+SMODS.meta_tags.plus_mult (adds flat multiplier as integer)
+SMODS.meta_tags.plus_chip (adds flat chip amount as integer)
+SMODS.meta_tags.times_mult, (multiplies flat multiplier by integer)
+SMODS.meta_tags.suit_diamonds, (condition of activation, ie: if diamond card is played)
 SMODS.meta_tags.suit_hearts, (condition)
 SMODS.meta_tags.suit_spades, (condition)
 SMODS.meta_tags.suit_clubs, (condition)
-SMODS.meta_tags.suit, (condition)
-SMODS.meta_tags.poker_hand, (condition)
-SMODS.meta_tags.hand_size,
-SMODS.meta_tags.joker_slot,
-SMODS.meta_tags.income,
-SMODS.meta_tags.discards,
-SMODS.meta_tags.hands,
-SMODS.meta_tags.spawn_card,
-SMODS.meta_tags.enhancements, (addition/condition)
-SMODS.meta_tags.probability,
-SMODS.meta_tags.tarot, (addition/condition)
-SMODS.meta_tags.card_scored, (condition)
-SMODS.meta_tags.reroll, (addition/condition)
-SMODS.meta_tags.face_card, (condition)
-SMODS.meta_tags.end_of_round, (condition)
-SMODS.meta_tags.scaling, (idk)
-SMODS.meta_tags.card_played, (condition)
-SMODS.meta_tags.deck, (condition)
-SMODS.meta_tags.full_deck, (condition)
+SMODS.meta_tags.poker_hand, (condition of activation, ie: if poker hand played is)
+SMODS.meta_tags.hand_size (adds / removes from hand size)
+SMODS.meta_tags.joker_slot (adds / removes joker slots)
+SMODS.meta_tags.income (adds money with certain condition)
+SMODS.meta_tags.discards (adds / removes amount of discards (possibly with conditions))
+SMODS.meta_tags.hands (adds / removes amount of playable hands (possibly with condition))
+SMODS.meta_tags.spawn_card (adds specific / random card to deck (possibly with seal / enhancment / modifier))
+SMODS.meta_tags.enhancements, (adds a certain / random enhacment / removes enhancment (possibly with condition))
+SMODS.meta_tags.probability (changes probability functions, ie dice joker)
+SMODS.meta_tags.tarot, (gives a certain / random tarot card (possibly with condition))
+SMODS.meta_tags.card_scored, (if specific / type of (suit / rank / enhancment / seal/ stone) card scored (aka gives chips after hand is selected) do (something))
+SMODS.meta_tags.reroll, (adds amount of free rerolls / changes price for rerolls / used as a condition for adding values to scaling jokers)
+SMODS.meta_tags.face_card, (used as condition for triggering jokers related to face cards (jack, queen, king))
+SMODS.meta_tags.end_of_round, (at end of round do (something) / change value of (something))
+SMODS.meta_tags.card_played, (if specific / type of (suit / rank / enhancment / seal/ stone) card played (aka used in a hand (doesnt matter if it gives chips or not) do (something))
+SMODS.meta_tags.full_deck, (if amount of cards in deck is exactly / lower than / higher than (integer) do (something))
 SMODS.meta_tags.card_discarded, (condition)
 SMODS.meta_tags.hand_played, (condition)
 SMODS.meta_tags.booster_pack, (idk)
@@ -44,3 +41,5 @@ SMODS.meta_tags.planet, (could be condition)
 SMODS.meta_tags.on_sell,
 SMODS.meta_tags.modify_blind,
 SMODS.meta_tags.interest (money related)
+SMODS.meta_tags.scaling, ()
+SMODS.meta_tags.deck, (condition)
